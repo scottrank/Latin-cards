@@ -38,12 +38,13 @@ async function route(request, env, url) {
   const user = await currentUser(request, env);
   if (!user) return json({ error: "Not signed in." }, 401);
 
-  if (path === "/api/me" && method === "GET") return json({ name: user.name, sets: setList() });
+  if (path === "/api/me" && method === "GET") return json({ name: user.name, sets: setList(), score: await score(env, user.id) });
   if (path === "/api/next" && method === "GET") return nextCard(env, user, url);
   if (path === "/api/review" && method === "POST") return review(request, env, user);
   if (path === "/api/stats" && method === "GET") return stats(env, user, url);
   if (path === "/api/reset" && method === "POST") {
     await env.DB.prepare("DELETE FROM progress WHERE user_id = ?").bind(user.id).run();
+    await env.DB.prepare("UPDATE users SET xp = 0, run_streak = 0, best_streak = 0 WHERE id = ?").bind(user.id).run();
     return json({ ok: true });
   }
   return json({ error: "Not found." }, 404);
@@ -107,7 +108,7 @@ async function startSession(env, userId, name) {
   const token = randomHex(32);
   await env.DB.prepare("INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)")
     .bind(token, userId, Date.now()).run();
-  return json({ name, sets: setList() }, 200, {
+  return json({ name, sets: setList(), score: await score(env, userId) }, 200, {
     "Set-Cookie": `sid=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_DAYS * 86400}`,
   });
 }
@@ -147,9 +148,15 @@ function setList() {
     .sort((a, b) => a.num - b.num);
 }
 
-// "Lesson 5" = that lesson only; "upto:5" = Lessons 1 through 5.
+// "Lesson 5" = that lesson only; "range:3-7" = Lessons 3 through 7; "upto:5" = Lessons 1 through 5.
 function cardsInScope(set) {
   if (!set) return CARDS;
+  const range = /^range:(\d+)-(\d+)$/.exec(set);
+  if (range) {
+    const lo = Math.min(Number(range[1]), Number(range[2]));
+    const hi = Math.max(Number(range[1]), Number(range[2]));
+    return CARDS.filter((c) => lessonNum(c.set) >= lo && lessonNum(c.set) <= hi);
+  }
   if (set.startsWith("upto:")) {
     const max = Number(set.slice(5));
     return CARDS.filter((c) => lessonNum(c.set) <= max);
@@ -252,7 +259,39 @@ async function review(request, env, user) {
        streak = excluded.streak, due_at = excluded.due_at, last_seen = excluded.last_seen`
   ).bind(user.id, card.id, box, p.correct + (right ? 1 : 0), p.missed + (right ? 0 : 1), streak, dueAt, now).run();
 
-  return json({ box, dueAt, streak });
+  // Points: 10 per right answer plus a bonus that grows with your run of right answers (max +10).
+  // A miss still earns 1 point for effort and resets the run.
+  const u = await env.DB.prepare("SELECT run_streak FROM users WHERE id = ?").bind(user.id).first();
+  const run = right ? (u?.run_streak || 0) + 1 : 0;
+  const gained = right ? 10 + Math.min(run - 1, 10) : 1;
+  await env.DB.prepare(
+    "UPDATE users SET xp = xp + ?, run_streak = ?, best_streak = MAX(best_streak, ?) WHERE id = ?"
+  ).bind(gained, run, run, user.id).run();
+
+  return json({ box, dueAt, streak, gained, score: await score(env, user.id) });
+}
+
+const LEVEL_XP = 250;
+async function score(env, userId) {
+  const u = await env.DB.prepare("SELECT xp, run_streak, best_streak FROM users WHERE id = ?").bind(userId).first();
+  const t = await env.DB.prepare(
+    `SELECT COALESCE(SUM(correct),0) AS right, COALESCE(SUM(missed),0) AS missed,
+            COALESCE(SUM(CASE WHEN box >= ${MASTERED_BOX} THEN 1 ELSE 0 END),0) AS mastered
+     FROM progress WHERE user_id = ?`
+  ).bind(userId).first();
+  const xp = u?.xp || 0;
+  return {
+    xp,
+    level: Math.floor(xp / LEVEL_XP) + 1,
+    levelProgress: (xp % LEVEL_XP) / LEVEL_XP,
+    toNextLevel: LEVEL_XP - (xp % LEVEL_XP),
+    run: u?.run_streak || 0,
+    best: u?.best_streak || 0,
+    right: t.right,
+    missed: t.missed,
+    mastered: t.mastered,
+    total: CARDS.length,
+  };
 }
 
 async function stats(env, user, url) {

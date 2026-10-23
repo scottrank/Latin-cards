@@ -38,27 +38,92 @@ function showAuth() {
 function enterApp(me) {
   $("nav").hidden = false;
   $("who").textContent = me.name;
-  const sel = $("set-select");
-  sel.innerHTML = "";
-  const total = me.sets.reduce((n, s) => n + s.count, 0);
-  sel.append(new Option(`All cards (${total})`, ""));
-  const cumulative = document.createElement("optgroup");
-  cumulative.label = "Everything up to…";
-  const single = document.createElement("optgroup");
-  single.label = "One lesson only";
-  let running = 0;
-  for (const s of me.sets) {
-    running += s.count;
-    if (s.num > 1) cumulative.append(new Option(`Lessons 1–${s.num} (${running})`, `upto:${s.num}`));
-    single.append(new Option(`${s.name} (${s.count})`, s.name));
-  }
-  if (cumulative.children.length) sel.append(cumulative);
-  sel.append(single);
-  sel.hidden = me.sets.length <= 1;
-  try { state.set = localStorage.getItem("set") || ""; } catch {}
-  if (![...sel.options].some((o) => o.value === state.set)) state.set = "";
-  sel.value = state.set;
+  state.user = me.name;
+  state.lessons = me.sets.map((s) => s.num).filter(Boolean);
+  state.minLesson = Math.min(...state.lessons);
+  state.maxLesson = Math.max(...state.lessons);
+  for (const el of [$("range-from"), $("range-to")]) { el.min = state.minLesson; el.max = state.maxLesson; }
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem("range") || "null"); } catch {}
+  setRange(saved?.from ?? state.minLesson, saved?.to ?? state.maxLesson, false);
+  renderScore(me.score);
   show("practice");
+}
+
+/* ---------- lesson range ---------- */
+function setRange(from, to, reload = true) {
+  const clamp = (n) => Math.min(state.maxLesson, Math.max(state.minLesson, Math.round(Number(n)) || state.minLesson));
+  let a = clamp(from), b = clamp(to);
+  if (a > b) [a, b] = [b, a];
+  $("range-from").value = a;
+  $("range-to").value = b;
+  state.set = `range:${a}-${b}`;
+  const any = state.lessons.some((n) => n >= a && n <= b);
+  $("range-note").textContent = any ? "" : (a === b ? `There are no cards for Lesson ${a}.` : `There are no cards in Lessons ${a}–${b}.`);
+  try { localStorage.setItem("range", JSON.stringify({ from: a, to: b })); } catch {}
+  state.extra = false;
+  if (reload) loadNext();
+}
+
+let rangeTimer;
+function rangeChanged() {
+  clearTimeout(rangeTimer);
+  rangeTimer = setTimeout(() => {
+    if ($("range-from").value === "" || $("range-to").value === "") return;
+    setRange($("range-from").value, $("range-to").value);
+  }, 500);
+}
+$("range-from").addEventListener("input", rangeChanged);
+$("range-to").addEventListener("input", rangeChanged);
+$("range-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  setRange($("range-from").value, $("range-to").value);
+  document.activeElement?.blur();
+});
+for (const el of [$("range-from"), $("range-to")]) {
+  el.addEventListener("blur", () => setRange($("range-from").value, $("range-to").value, false));
+}
+$("range-all").addEventListener("click", () => setRange(state.minLesson, state.maxLesson));
+
+/* ---------- score / tally ---------- */
+function todayKey() {
+  return `today:${state.user}:${new Date().toLocaleDateString()}`;
+}
+function getToday() {
+  try { return JSON.parse(localStorage.getItem(todayKey()) || "null") || { right: 0, missed: 0 }; }
+  catch { return state.today || { right: 0, missed: 0 }; }
+}
+function bumpToday(result) {
+  const t = getToday();
+  t[result === "right" ? "right" : "missed"]++;
+  state.today = t;
+  try { localStorage.setItem(todayKey(), JSON.stringify(t)); } catch {}
+  return t;
+}
+function renderScore(sc) {
+  if (!sc) return;
+  const prevLevel = state.level;
+  state.level = sc.level;
+  $("t-level").textContent = `Lv ${sc.level}`;
+  $("t-xpfill").style.width = `${Math.round(sc.levelProgress * 100)}%`;
+  $("t-xp").textContent = `${sc.xp} XP · ${sc.toNextLevel} to Lv ${sc.level + 1}`;
+  $("t-streak").textContent = sc.run;
+  $("t-best").textContent = sc.best;
+  $("t-mastered").textContent = `${sc.mastered}/${sc.total}`;
+  const t = getToday();
+  $("t-right").textContent = t.right;
+  $("t-missed").textContent = t.missed;
+  $("tally").classList.toggle("hot", sc.run >= 5);
+  if (prevLevel && sc.level > prevLevel) toast(`Level up! You're now level ${sc.level} 🎉`, "level");
+}
+
+let toastTimer;
+function toast(text, kind = "") {
+  const el = $("toast");
+  el.textContent = text;
+  el.className = "toast show " + kind;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (el.className = "toast"), 2200);
 }
 
 /* ---------- auth ---------- */
@@ -101,13 +166,6 @@ $("logout").addEventListener("click", async () => {
 document.querySelectorAll("nav [data-view]").forEach((b) => b.addEventListener("click", () => show(b.dataset.view)));
 
 /* ---------- practice ---------- */
-$("set-select").addEventListener("change", (e) => {
-  state.set = e.target.value;
-  state.extra = false;
-  try { localStorage.setItem("set", state.set); } catch {}
-  loadNext();
-});
-
 async function loadNext() {
   const qs = new URLSearchParams({ set: state.set, skip: state.lastId, extra: state.extra ? "1" : "0" });
   let data;
@@ -179,8 +237,14 @@ async function answer(result) {
   if (!state.card || !state.flipped || state.busy) return;
   state.busy = true;
   try {
-    await api("/api/review", { cardId: state.card.id, result });
+    const r = await api("/api/review", { cardId: state.card.id, result });
     state.lastId = state.card.id;
+    bumpToday(result);
+    renderScore(r.score);
+    const when = timeUntil(r.dueAt).replace(/^in /, "");
+    toast(result === "right"
+      ? `+${r.gained} XP · see it again ${when === "tomorrow" ? "tomorrow" : "in " + when}`
+      : `+1 XP for trying · it'll come back soon`, result === "right" ? "good" : "bad");
     await loadNext();
   } catch (err) {
     if (err.message !== "signed out") $("record").textContent = err.message;
@@ -189,7 +253,7 @@ async function answer(result) {
   }
 }
 
-$("card").addEventListener("click", flip);
+$("card").addEventListener("click", () => { document.activeElement?.blur(); flip(); });
 $("btn-miss").addEventListener("click", () => answer("missed"));
 $("btn-hit").addEventListener("click", () => answer("right"));
 

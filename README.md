@@ -22,6 +22,9 @@ Each student has their own schedule for every card, using Leitner boxes:
 - Due cards are shown hardest-first (most misses relative to correct answers), then new cards are introduced.
 - When nothing is due, students can choose **Extra practice**, which drills their weakest cards.
 
+- Students type a lesson range (e.g. 3 to 7) to choose what they study.
+- A score bar tracks XP (10 per right answer + streak bonus up to +10; 1 for a miss), level (every 250 XP), current and best streak, today's right/missed counts, and cards mastered.
+
 Keyboard: space to flip, `1` / ← for Missed it, `2` / → for Got it.
 
 ## Editing the deck

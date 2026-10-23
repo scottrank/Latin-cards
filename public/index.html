@@ -43,10 +43,33 @@
 
     <!-- Practice -->
     <section id="view-practice" class="view" hidden>
+      <div class="tally" id="tally">
+        <div class="t-level">
+          <span class="t-badge" id="t-level">Lv 1</span>
+          <div class="t-xpbar"><span id="t-xpfill"></span></div>
+          <span class="t-small" id="t-xp">0 XP</span>
+        </div>
+        <div class="t-cells">
+          <div class="t-cell"><b id="t-streak">0</b><span>streak 🔥</span></div>
+          <div class="t-cell"><b id="t-best">0</b><span>best</span></div>
+          <div class="t-cell good"><b id="t-right">0</b><span>right today</span></div>
+          <div class="t-cell bad"><b id="t-missed">0</b><span>missed today</span></div>
+          <div class="t-cell"><b id="t-mastered">0</b><span>mastered</span></div>
+        </div>
+      </div>
+
       <div class="toolbar">
-        <select id="set-select" aria-label="Card set"></select>
+        <form class="range" id="range-form">
+          <span>Lessons</span>
+          <input id="range-from" type="number" inputmode="numeric" min="1" aria-label="From lesson" />
+          <span>to</span>
+          <input id="range-to" type="number" inputmode="numeric" min="1" aria-label="To lesson" />
+          <button type="submit" hidden></button>
+          <button type="button" class="link" id="range-all">All</button>
+        </form>
         <div class="counts" id="counts"></div>
       </div>
+      <p class="range-note" id="range-note"></p>
 
       <div id="empty" class="panel center" hidden></div>
 
@@ -72,7 +95,21 @@
           <button class="hit" id="btn-hit">Got it <kbd>2</kbd></button>
         </div>
         <p class="record" id="record"></p>
+        <div class="toast" id="toast" aria-live="polite"></div>
       </div>
+
+      <details class="how">
+        <summary>How it works</summary>
+        <ul>
+          <li><b>Pick your lessons.</b> Type the first and last lesson you want, like 1 to 5. Only those cards come up.</li>
+          <li><b>Flip, then be honest.</b> Tap the card (or press space), then choose <i>Got it</i> or <i>Missed it</i>.</li>
+          <li><b>Miss it, see it more.</b> A missed card comes right back in a minute or so, and cards you miss often are always shown first.</li>
+          <li><b>Know it, see it less.</b> Each right answer pushes a card further away: 10 minutes, then 1 day, 3 days, a week, 16 days, and about a month.</li>
+          <li><b>Stubborn cards stay close.</b> If you've missed a card 3 or more times, it won't go further than a day away until you get it right 3 times in a row.</li>
+          <li><b>Points.</b> 10 XP for every right answer, plus a bonus of up to 10 more for a long streak. A miss earns 1 XP for trying and resets your streak. Every 250 XP is a new level.</li>
+          <li><b>Mastered</b> means a card you've gotten right enough times that it's now a week or more away.</li>
+        </ul>
+      </details>
     </section>
 
     <!-- Progress -->

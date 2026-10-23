@@ -71,6 +71,46 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .counts { color: var(--muted); font-size: 14px; }
 .counts b { color: var(--ink); font-weight: 600; }
 
+/* score tally */
+.tally {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
+  box-shadow: var(--shadow); transition: border-color .3s, box-shadow .3s;
+}
+.tally.hot { border-color: color-mix(in srgb, #e8892b 60%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, #e8892b 18%, transparent), var(--shadow); }
+.t-level { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.t-badge { font-weight: 600; font-size: 13px; padding: 3px 9px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); white-space: nowrap; }
+.t-xpbar { flex: 1; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.t-xpbar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s ease; }
+.t-small { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.t-cells { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.t-cell { text-align: center; }
+.t-cell b { display: block; font-family: var(--serif); font-size: 26px; line-height: 1.1; font-weight: 600; }
+.t-cell span { font-size: 12px; color: var(--muted); }
+.t-cell.good b { color: var(--good); }
+.t-cell.bad b { color: var(--bad); }
+
+/* lesson range */
+.range { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.range input { width: 64px; margin: 0; padding: 8px 10px; text-align: center; }
+.range-note { margin: -10px 0 12px; font-size: 13px; color: var(--muted); min-height: 0; }
+.range-note:empty { display: none; }
+
+/* answer feedback */
+.toast {
+  text-align: center; font-size: 14px; font-weight: 600; height: 22px; margin-top: 4px;
+  opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: none; }
+.toast.good { color: var(--good); }
+.toast.bad { color: var(--bad); }
+.toast.level { color: var(--accent); font-size: 16px; }
+
+.how { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.how summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+.how ul { padding-left: 18px; margin: 10px 0 0; }
+.how li { margin-bottom: 6px; }
+.how b { color: var(--ink); font-weight: 600; }
+
 .card-wrap { perspective: 1400px; }
 .card {
   position: relative; display: block; width: 100%; min-height: 340px; padding: 0; border: 0; background: none;
@@ -118,6 +158,10 @@ kbd { font-family: var(--sans); font-size: 11px; opacity: .6; border: 1px solid 
 
 @media (max-width: 520px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
+  .t-cells { grid-template-columns: repeat(5, 1fr); gap: 2px; }
+  .t-cell b { font-size: 21px; }
+  .t-cell span { font-size: 10.5px; }
+  .t-small { display: none; }
   .panel { padding: 22px; }
   .card { min-height: 260px; }
   .hint { display: none; }
