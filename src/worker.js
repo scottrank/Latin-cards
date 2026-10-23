@@ -134,14 +134,27 @@ async function currentUser(request, env) {
 
 /* ---------- practice ---------- */
 
+function lessonNum(set) {
+  const m = /(\d+)/.exec(set || "");
+  return m ? Number(m[1]) : 0;
+}
+
 function setList() {
   const counts = new Map();
   for (const c of CARDS) counts.set(c.set || "All", (counts.get(c.set || "All") || 0) + 1);
-  return [...counts].map(([name, count]) => ({ name, count }));
+  return [...counts]
+    .map(([name, count]) => ({ name, count, num: lessonNum(name) }))
+    .sort((a, b) => a.num - b.num);
 }
 
+// "Lesson 5" = that lesson only; "upto:5" = Lessons 1 through 5.
 function cardsInScope(set) {
-  return set ? CARDS.filter((c) => (c.set || "All") === set) : CARDS;
+  if (!set) return CARDS;
+  if (set.startsWith("upto:")) {
+    const max = Number(set.slice(5));
+    return CARDS.filter((c) => lessonNum(c.set) <= max);
+  }
+  return CARDS.filter((c) => (c.set || "All") === set);
 }
 
 async function progressMap(env, userId) {

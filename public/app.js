@@ -42,7 +42,18 @@ function enterApp(me) {
   sel.innerHTML = "";
   const total = me.sets.reduce((n, s) => n + s.count, 0);
   sel.append(new Option(`All cards (${total})`, ""));
-  for (const s of me.sets) sel.append(new Option(`${s.name} (${s.count})`, s.name));
+  const cumulative = document.createElement("optgroup");
+  cumulative.label = "Everything up to…";
+  const single = document.createElement("optgroup");
+  single.label = "One lesson only";
+  let running = 0;
+  for (const s of me.sets) {
+    running += s.count;
+    if (s.num > 1) cumulative.append(new Option(`Lessons 1–${s.num} (${running})`, `upto:${s.num}`));
+    single.append(new Option(`${s.name} (${s.count})`, s.name));
+  }
+  if (cumulative.children.length) sel.append(cumulative);
+  sel.append(single);
   sel.hidden = me.sets.length <= 1;
   try { state.set = localStorage.getItem("set") || ""; } catch {}
   if (![...sel.options].some((o) => o.value === state.set)) state.set = "";
@@ -115,6 +126,12 @@ async function loadNext() {
     $("card-front").textContent = data.card.front;
     $("card-front-echo").textContent = data.card.front;
     $("card-back").textContent = data.card.back;
+    $("card-detail").textContent = data.card.detail || "";
+    $("card-grammar").textContent = data.card.tag || "";
+    $("card-lesson").textContent = data.card.set || "";
+    const long = data.card.front.length > 60 || data.card.front.split("\n").length > 3;
+    $("card-front").classList.toggle("dense", long);
+    $("card-back").classList.toggle("dense", data.card.back.length > 60 || data.card.back.split("\n").length > 3);
   }, $("card").dataset.used ? 180 : 0);
   $("card").dataset.used = "1";
   $("card-tag").textContent = data.isNew ? "New" : state.extra ? "Extra practice" : "";
