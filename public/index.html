@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Latin Cards</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%238a2a1f'/%3E%3Ctext x='16' y='23' font-family='Georgia' font-size='20' fill='%23f6f0e4' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">LATINA <span>· flashcards</span></div>
+    <nav id="nav" hidden>
+      <button class="link" data-view="practice">Practice</button>
+      <button class="link" data-view="progress">Progress</button>
+      <span class="who" id="who"></span>
+      <button class="link" id="logout">Sign out</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Sign in / create profile -->
+    <section id="view-auth" class="view">
+      <div class="panel auth">
+        <h1>Salvē!</h1>
+        <p class="sub">Sign in with your name and PIN, or create a new profile.</p>
+        <div class="tabs" role="tablist">
+          <button role="tab" class="tab active" data-mode="login">Sign in</button>
+          <button role="tab" class="tab" data-mode="signup">New profile</button>
+        </div>
+        <form id="auth-form" autocomplete="off">
+          <label>Name<input id="auth-name" maxlength="40" required autocapitalize="words" /></label>
+          <label>PIN <small>(4–8 digits)</small><input id="auth-pin" type="password" inputmode="numeric" pattern="\d{4,8}" maxlength="8" required /></label>
+          <label id="pin2-wrap" hidden>Confirm PIN<input id="auth-pin2" type="password" inputmode="numeric" maxlength="8" /></label>
+          <p class="error" id="auth-error" role="alert"></p>
+          <button class="primary" id="auth-submit" type="submit">Sign in</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Practice -->
+    <section id="view-practice" class="view" hidden>
+      <div class="toolbar">
+        <select id="set-select" aria-label="Card set"></select>
+        <div class="counts" id="counts"></div>
+      </div>
+
+      <div id="empty" class="panel center" hidden></div>
+
+      <div id="study" hidden>
+        <div class="card-wrap">
+          <button class="card" id="card" aria-live="polite">
+            <div class="face front">
+              <span class="tag" id="card-tag"></span>
+              <div class="text" id="card-front"></div>
+              <span class="hint">tap or press space to flip</span>
+            </div>
+            <div class="face back">
+              <div class="text small-q" id="card-front-echo"></div>
+              <div class="text" id="card-back"></div>
+            </div>
+          </button>
+        </div>
+        <div class="answer" id="answer">
+          <button class="miss" id="btn-miss">Missed it <kbd>1</kbd></button>
+          <button class="hit" id="btn-hit">Got it <kbd>2</kbd></button>
+        </div>
+        <p class="record" id="record"></p>
+      </div>
+    </section>
+
+    <!-- Progress -->
+    <section id="view-progress" class="view" hidden>
+      <div class="stats" id="stats"></div>
+      <div class="bar" id="bar"></div>
+      <h2>Trouble cards</h2>
+      <p class="sub">The cards you've missed most. These come up more often until you get them right a few times in a row.</p>
+      <ul class="trouble" id="trouble"></ul>
+      <button class="link danger" id="reset">Reset my progress</button>
+    </section>
+  </main>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
