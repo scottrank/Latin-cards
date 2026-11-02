@@ -211,8 +211,13 @@ function showEmpty(data) {
     return;
   }
   const when = data.nextDue ? timeUntil(data.nextDue) : "later";
+  if (data.allRight) {
+    el.innerHTML = `<div class="empty-title">Optimē! Session complete.</div>
+      <p class="sub">You got every card in these lessons right. They're all resting until your next session. Your next card is due ${when}.</p>`;
+    return;
+  }
   el.innerHTML = `<div class="empty-title">Optimē! All caught up.</div>
-    <p class="sub">Your next card is due ${when}. You can keep going with extra practice on the cards you find hardest.</p>
+    <p class="sub">Nothing is due right now. Your next card is due ${when}. You can keep going with extra practice on cards you haven't gotten right this session.</p>
     <button class="primary" id="extra-btn">Extra practice</button>`;
   $("extra-btn").addEventListener("click", () => { state.extra = true; loadNext(); });
 }
@@ -243,8 +248,8 @@ async function answer(result) {
     renderScore(r.score);
     const when = timeUntil(r.dueAt).replace(/^in /, "");
     toast(result === "right"
-      ? `+${r.gained} XP · see it again ${when === "tomorrow" ? "tomorrow" : "in " + when}`
-      : `+1 XP for trying · it'll come back soon`, result === "right" ? "good" : "bad");
+      ? `+${r.gained} XP · done for this session · back ${when === "tomorrow" ? "tomorrow" : "in " + when}`
+      : `+1 XP for trying · you'll see it again in a few minutes`, result === "right" ? "good" : "bad");
     await loadNext();
   } catch (err) {
     if (err.message !== "signed out") $("record").textContent = err.message;

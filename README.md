@@ -6,21 +6,22 @@ Latin flashcard practice with student profiles (name + PIN) and spaced repetitio
 
 Each student has their own schedule for every card, using Leitner boxes:
 
-| Box | Comes back after a correct answer |
-|-----|-----------------------------------|
-| 0 | 1 minute (a couple of cards later) |
-| 1 | 10 minutes |
-| 2 | 1 day |
-| 3 | 3 days |
-| 4 | 7 days (counts as "mastered") |
-| 5 | 16 days |
-| 6 | 35 days |
+A practice session is assumed to be about 20 minutes.
 
-- **Got it** moves the card up one box, so it shows up less and less.
-- **Missed it** drops the card to box 0, so it comes right back.
-- A card missed 3+ times is held at box 2 or below until the student gets it right 3 times in a row.
+| Box | Comes back after |
+|-----|------------------|
+| 0 | 3 minutes (a miss: later in the same session) |
+| 1 | 1 day |
+| 2 | 3 days |
+| 3 | 7 days (counts as "mastered") |
+| 4 | 16 days |
+| 5 | 35 days |
+
+- **Got it** moves the card up one box. Every box above 0 is at least a day away, so a right answer never returns in the same session.
+- **Missed it** drops the card to box 0, so it returns in about 3 minutes, within the same session.
+- A card missed 3+ times is held at box 1 (one day) or below until the student gets it right 3 times in a row.
 - Due cards are shown hardest-first (most misses relative to correct answers), then new cards are introduced.
-- When nothing is due, students can choose **Extra practice**, which drills their weakest cards.
+- When nothing is due, students can choose **Extra practice**, which drills their weakest cards (never one they got right in the last 20 minutes).
 
 - Students type a lesson range (e.g. 3 to 7) to choose what they study.
 - A score bar tracks XP (10 per right answer + streak bonus up to +10; 1 for a miss), level (every 250 XP), current and best streak, today's right/missed counts, and cards mastered.

@@ -2,13 +2,17 @@ import { CARDS } from "./cards.js";
 
 const CARD_BY_ID = new Map(CARDS.map((c) => [c.id, c]));
 
-// Leitner boxes: how long until a card comes back after you get it right at this level.
-// A miss drops the card to box 0, which brings it back within a couple of cards.
+// A practice session is assumed to be about 20 minutes.
+//  - Missed it: the card drops to box 0 and comes back in ~3 minutes, i.e. later in the same session.
+//  - Got it: the card moves up a box. Every box above 0 is at least a day away,
+//    so a card you just got right never returns in the same session.
 const MIN = 60 * 1000;
 const DAY = 24 * 60 * MIN;
-const INTERVALS = [1 * MIN, 10 * MIN, 1 * DAY, 3 * DAY, 7 * DAY, 16 * DAY, 35 * DAY];
+const SESSION_MS = 20 * MIN;
+const MISS_INTERVAL = 3 * MIN;
+const INTERVALS = [MISS_INTERVAL, 1 * DAY, 3 * DAY, 7 * DAY, 16 * DAY, 35 * DAY];
 const MAX_BOX = INTERVALS.length - 1;
-const MASTERED_BOX = 4;
+const MASTERED_BOX = 3; // 7+ days away
 
 const SESSION_DAYS = 90;
 const MAX_FAILS = 5;
@@ -206,9 +210,16 @@ async function nextCard(env, user, url) {
       const nextDue = Math.min(...seen.map((c) => prog.get(c.id).due_at));
       return json({ done: true, nextDue });
     }
+    // Extra practice never brings back a card answered right within the last session window.
+    const justGotRight = (p) => p.streak > 0 && p.last_seen && now - p.last_seen < SESSION_MS;
     const weakest = seen
-      .filter((c) => c.id !== skip || seen.length === 1)
+      .filter((c) => !justGotRight(prog.get(c.id)))
+      .filter((c, _, arr) => c.id !== skip || arr.length === 1)
       .sort((a, b) => difficulty(prog.get(b.id)) - difficulty(prog.get(a.id)) || prog.get(a.id).due_at - prog.get(b.id).due_at);
+    if (!weakest.length) {
+      const nextDue = Math.min(...seen.map((c) => prog.get(c.id).due_at));
+      return json({ done: true, nextDue, allRight: true });
+    }
     pick = pickFromTop(weakest, 2);
   }
 
@@ -248,7 +259,7 @@ async function review(request, env, user) {
   }
   // A card missed often stays on a short leash: cap its box until it earns its way back.
   const troubled = p.missed + (right ? 0 : 1) >= 3 && streak < 3;
-  if (troubled) box = Math.min(box, 2);
+  if (troubled) box = Math.min(box, 1); // right answers still leave the session, but only for a day
   const dueAt = now + INTERVALS[box];
 
   await env.DB.prepare(
