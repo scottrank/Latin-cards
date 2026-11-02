@@ -43,6 +43,11 @@
 
     <!-- Practice -->
     <section id="view-practice" class="view" hidden>
+      <div class="dir-switch" role="radiogroup" aria-label="Card direction">
+        <button type="button" role="radio" data-dir="la">Latin → English</button>
+        <button type="button" role="radio" data-dir="en">English → Latin</button>
+      </div>
+
       <div class="tally" id="tally">
         <div class="t-cells">
           <div class="t-cell"><b id="t-streak">0</b><span>streak 🔥</span></div>
@@ -82,6 +87,7 @@
               <div class="text small-q" id="card-front-echo"></div>
               <div class="text" id="card-back"></div>
               <div class="detail" id="card-detail"></div>
+              <div class="detail" id="card-grammar-back"></div>
             </div>
           </button>
         </div>
@@ -97,6 +103,7 @@
         <summary>How it works</summary>
         <ul>
           <li><b>Pick your lessons.</b> Type the first and last lesson you want, like 1 to 5. Only those cards come up.</li>
+          <li><b>Choose a direction.</b> Use the switch at the top to see Latin first or English first. Each direction keeps its own progress, so you can learn both ways.</li>
           <li><b>Flip, then be honest.</b> Tap the card (or press space), then choose <i>Got it</i> or <i>Missed it</i>.</li>
           <li><b>A session is about 20 minutes.</b></li>
           <li><b>Miss it, see it again this session.</b> A missed card comes back in about 3 minutes, and keeps coming back until you get it right. Cards you miss often are shown first.</li>

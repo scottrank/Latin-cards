@@ -23,6 +23,7 @@ A practice session is assumed to be about 20 minutes.
 - Due cards are shown hardest-first (most misses relative to correct answers), then new cards are introduced.
 - When nothing is due, students can choose **Extra practice**, which drills their weakest cards (never one they got right in the last 20 minutes).
 
+- A switch at the top flips cards between Latin → English and English → Latin. Each direction has its own progress (reverse progress is stored as `<card id>~r`).
 - Students type a lesson range (e.g. 3 to 7) to choose what they study.
 - A score bar tracks the current and best streak of right answers, today's right/missed counts, and cards mastered.
 

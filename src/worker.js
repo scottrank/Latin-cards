@@ -42,7 +42,9 @@ async function route(request, env, url) {
   const user = await currentUser(request, env);
   if (!user) return json({ error: "Not signed in." }, 401);
 
-  if (path === "/api/me" && method === "GET") return json({ name: user.name, sets: setList(), score: await score(env, user.id) });
+  if (path === "/api/me" && method === "GET") {
+    return json({ name: user.name, sets: setList(), score: await score(env, user.id, getDir(url.searchParams.get("dir"))) });
+  }
   if (path === "/api/next" && method === "GET") return nextCard(env, user, url);
   if (path === "/api/review" && method === "POST") return review(request, env, user);
   if (path === "/api/stats" && method === "GET") return stats(env, user, url);
@@ -168,11 +170,24 @@ function cardsInScope(set) {
   return CARDS.filter((c) => (c.set || "All") === set);
 }
 
-async function progressMap(env, userId) {
+// Each card is practiced in two directions with separate progress:
+//   "la" = Latin on the front (stored under the card id)
+//   "en" = English on the front (stored under "<card id>~r")
+const REV = "~r";
+function getDir(v) { return v === "en" ? "en" : "la"; }
+function progressKey(cardId, dir) { return dir === "en" ? cardId + REV : cardId; }
+
+async function progressMap(env, userId, dir = "la") {
   const { results } = await env.DB.prepare(
     "SELECT card_id, box, correct, missed, streak, due_at, last_seen FROM progress WHERE user_id = ?"
   ).bind(userId).all();
-  return new Map(results.map((r) => [r.card_id, r]));
+  const map = new Map();
+  for (const r of results) {
+    const isRev = r.card_id.endsWith(REV);
+    if (isRev !== (dir === "en")) continue;
+    map.set(isRev ? r.card_id.slice(0, -REV.length) : r.card_id, r);
+  }
+  return map;
 }
 
 // How much a card needs practice: misses push it up, correct answers pull it down.
@@ -184,10 +199,11 @@ async function nextCard(env, user, url) {
   const set = url.searchParams.get("set") || "";
   const skip = url.searchParams.get("skip") || ""; // the card just shown, so it doesn't repeat back-to-back
   const extra = url.searchParams.get("extra") === "1";
+  const dir = getDir(url.searchParams.get("dir"));
   const scope = cardsInScope(set);
   if (!scope.length) return json({ done: true, empty: true });
 
-  const prog = await progressMap(env, user.id);
+  const prog = await progressMap(env, user.id, dir);
   const now = Date.now();
 
   const seen = [];
@@ -243,11 +259,13 @@ async function review(request, env, user) {
   const card = CARD_BY_ID.get(body.cardId);
   if (!card) return json({ error: "Unknown card." }, 400);
   const right = body.result === "right";
+  const dir = getDir(body.dir);
+  const key = progressKey(card.id, dir);
   const now = Date.now();
 
   const p = (await env.DB.prepare(
     "SELECT box, correct, missed, streak FROM progress WHERE user_id = ? AND card_id = ?"
-  ).bind(user.id, card.id).first()) || { box: 0, correct: 0, missed: 0, streak: 0 };
+  ).bind(user.id, key).first()) || { box: 0, correct: 0, missed: 0, streak: 0 };
 
   let box, streak;
   if (right) {
@@ -268,7 +286,7 @@ async function review(request, env, user) {
      ON CONFLICT(user_id, card_id) DO UPDATE SET
        box = excluded.box, correct = excluded.correct, missed = excluded.missed,
        streak = excluded.streak, due_at = excluded.due_at, last_seen = excluded.last_seen`
-  ).bind(user.id, card.id, box, p.correct + (right ? 1 : 0), p.missed + (right ? 0 : 1), streak, dueAt, now).run();
+  ).bind(user.id, key, box, p.correct + (right ? 1 : 0), p.missed + (right ? 0 : 1), streak, dueAt, now).run();
 
   // Points: 10 per right answer plus a bonus that grows with your run of right answers (max +10).
   // A miss still earns 1 point for effort and resets the run.
@@ -279,17 +297,17 @@ async function review(request, env, user) {
     "UPDATE users SET xp = xp + ?, run_streak = ?, best_streak = MAX(best_streak, ?) WHERE id = ?"
   ).bind(gained, run, run, user.id).run();
 
-  return json({ box, dueAt, streak, gained, score: await score(env, user.id) });
+  return json({ box, dueAt, streak, gained, score: await score(env, user.id, dir) });
 }
 
 const LEVEL_XP = 250;
-async function score(env, userId) {
+async function score(env, userId, dir = "la") {
   const u = await env.DB.prepare("SELECT xp, run_streak, best_streak FROM users WHERE id = ?").bind(userId).first();
   const t = await env.DB.prepare(
     `SELECT COALESCE(SUM(correct),0) AS right, COALESCE(SUM(missed),0) AS missed,
             COALESCE(SUM(CASE WHEN box >= ${MASTERED_BOX} THEN 1 ELSE 0 END),0) AS mastered
-     FROM progress WHERE user_id = ?`
-  ).bind(userId).first();
+     FROM progress WHERE user_id = ? AND (card_id LIKE ?) = ?`
+  ).bind(userId, "%" + REV, dir === "en" ? 1 : 0).first();
   const xp = u?.xp || 0;
   return {
     xp,
@@ -308,7 +326,7 @@ async function score(env, userId) {
 async function stats(env, user, url) {
   const set = url.searchParams.get("set") || "";
   const scope = cardsInScope(set);
-  const prog = await progressMap(env, user.id);
+  const prog = await progressMap(env, user.id, getDir(url.searchParams.get("dir")));
   const now = Date.now();
 
   let mastered = 0, learning = 0, fresh = 0, due = 0;

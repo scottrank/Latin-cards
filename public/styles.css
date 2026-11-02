@@ -71,6 +71,11 @@ input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .counts { color: var(--muted); font-size: 14px; }
 .counts b { color: var(--ink); font-weight: 600; }
 
+/* direction switch */
+.dir-switch { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); padding: 4px; border-radius: 12px; margin-bottom: 12px; }
+.dir-switch button { flex: 1; border: 0; background: none; padding: 9px 8px; border-radius: 9px; color: var(--muted); font-weight: 600; font-size: 14px; }
+.dir-switch button.active { background: var(--accent); color: var(--accent-ink); }
+
 /* score tally */
 .tally {
   background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;

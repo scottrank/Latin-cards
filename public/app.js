@@ -8,6 +8,7 @@ const state = {
   busy: false,
   extra: false,
   lastId: "",
+  dir: (() => { try { return localStorage.getItem("dir") === "en" ? "en" : "la"; } catch { return "la"; } })(),
 };
 
 /* ---------- api ---------- */
@@ -161,7 +162,7 @@ document.querySelectorAll("nav [data-view]").forEach((b) => b.addEventListener("
 
 /* ---------- practice ---------- */
 async function loadNext() {
-  const qs = new URLSearchParams({ set: state.set, skip: state.lastId, extra: state.extra ? "1" : "0" });
+  const qs = new URLSearchParams({ set: state.set, skip: state.lastId, extra: state.extra ? "1" : "0", dir: state.dir });
   let data;
   try { data = await api("/api/next?" + qs); } catch { return; }
 
@@ -175,15 +176,18 @@ async function loadNext() {
   $("answer").classList.remove("show");
   // Swap text after the card has turned back to the front, so the answer never flashes.
   setTimeout(() => {
-    $("card-front").textContent = data.card.front;
-    $("card-front-echo").textContent = data.card.front;
-    $("card-back").textContent = data.card.back;
+    const [shown, hidden] = sides(data.card);
+    $("card-front").textContent = shown;
+    $("card-front-echo").textContent = shown;
+    $("card-back").textContent = hidden;
     $("card-detail").textContent = data.card.detail || "";
-    $("card-grammar").textContent = data.card.tag || "";
+    // In English-first mode the grammar label would give away the Latin, so it moves to the back.
+    $("card-grammar").textContent = state.dir === "la" ? data.card.tag || "" : "";
+    $("card-grammar-back").textContent = state.dir === "en" ? data.card.tag || "" : "";
     $("card-lesson").textContent = data.card.set || "";
-    const long = data.card.front.length > 60 || data.card.front.split("\n").length > 3;
+    const long = shown.length > 60 || shown.split("\n").length > 3;
     $("card-front").classList.toggle("dense", long);
-    $("card-back").classList.toggle("dense", data.card.back.length > 60 || data.card.back.split("\n").length > 3);
+    $("card-back").classList.toggle("dense", hidden.length > 60 || hidden.split("\n").length > 3);
   }, $("card").dataset.used ? 180 : 0);
   $("card").dataset.used = "1";
   $("card-tag").textContent = data.isNew ? "New" : state.extra ? "Extra practice" : "";
@@ -236,7 +240,7 @@ async function answer(result) {
   if (!state.card || !state.flipped || state.busy) return;
   state.busy = true;
   try {
-    const r = await api("/api/review", { cardId: state.card.id, result });
+    const r = await api("/api/review", { cardId: state.card.id, result, dir: state.dir });
     state.lastId = state.card.id;
     bumpToday(result);
     renderScore(r.score);
@@ -266,7 +270,7 @@ document.addEventListener("keydown", (e) => {
 /* ---------- progress ---------- */
 async function loadStats() {
   let s;
-  try { s = await api("/api/stats?" + new URLSearchParams({ set: state.set })); } catch { return; }
+  try { s = await api("/api/stats?" + new URLSearchParams({ set: state.set, dir: state.dir })); } catch { return; }
   const tiles = [
     ["Mastered", s.mastered, "var(--good)"],
     ["Learning", s.learning, "var(--accent)"],
@@ -286,8 +290,9 @@ async function loadStats() {
   for (const c of s.trouble) {
     const li = document.createElement("li");
     li.innerHTML = `<div><div class="q"></div><div class="a"></div></div><span class="m"></span>`;
-    li.querySelector(".q").textContent = c.front;
-    li.querySelector(".a").textContent = c.back;
+    const [q, a] = sides(c);
+    li.querySelector(".q").textContent = q;
+    li.querySelector(".a").textContent = a;
     li.querySelector(".m").textContent = `missed ${c.missed}× · right ${c.correct}×`;
     list.append(li);
   }
@@ -299,5 +304,32 @@ $("reset").addEventListener("click", async () => {
   loadStats();
 });
 
+/* ---------- direction ---------- */
+function sides(card) {
+  return state.dir === "en" ? [card.back, card.front] : [card.front, card.back];
+}
+function renderDir() {
+  document.querySelectorAll("[data-dir]").forEach((b) => {
+    const on = b.dataset.dir === state.dir;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-checked", on);
+  });
+}
+document.querySelectorAll("[data-dir]").forEach((b) =>
+  b.addEventListener("click", async () => {
+    if (b.dataset.dir === state.dir) return;
+    state.dir = b.dataset.dir;
+    try { localStorage.setItem("dir", state.dir); } catch {}
+    renderDir();
+    state.lastId = "";
+    state.extra = false;
+    b.blur();
+    const me = await api("/api/me?dir=" + state.dir).catch(() => null);
+    if (me) renderScore(me.score);
+    if (!$("view-progress").hidden) loadStats(); else loadNext();
+  })
+);
+renderDir();
+
 /* ---------- boot ---------- */
-api("/api/me").then(enterApp).catch(() => {});
+api("/api/me?dir=" + state.dir).then(enterApp).catch(() => {});
