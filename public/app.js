@@ -102,11 +102,6 @@ function bumpToday(result) {
 }
 function renderScore(sc) {
   if (!sc) return;
-  const prevLevel = state.level;
-  state.level = sc.level;
-  $("t-level").textContent = `Lv ${sc.level}`;
-  $("t-xpfill").style.width = `${Math.round(sc.levelProgress * 100)}%`;
-  $("t-xp").textContent = `${sc.xp} XP · ${sc.toNextLevel} to Lv ${sc.level + 1}`;
   $("t-streak").textContent = sc.run;
   $("t-best").textContent = sc.best;
   $("t-mastered").textContent = `${sc.mastered}/${sc.total}`;
@@ -114,7 +109,6 @@ function renderScore(sc) {
   $("t-right").textContent = t.right;
   $("t-missed").textContent = t.missed;
   $("tally").classList.toggle("hot", sc.run >= 5);
-  if (prevLevel && sc.level > prevLevel) toast(`Level up! You're now level ${sc.level} 🎉`, "level");
 }
 
 let toastTimer;
@@ -248,8 +242,8 @@ async function answer(result) {
     renderScore(r.score);
     const when = timeUntil(r.dueAt).replace(/^in /, "");
     toast(result === "right"
-      ? `+${r.gained} XP · done for this session · back ${when === "tomorrow" ? "tomorrow" : "in " + when}`
-      : `+1 XP for trying · you'll see it again in a few minutes`, result === "right" ? "good" : "bad");
+      ? `Done for this session · back ${when === "tomorrow" ? "tomorrow" : "in " + when}`
+      : `You'll see it again in a few minutes`, result === "right" ? "good" : "bad");
     await loadNext();
   } catch (err) {
     if (err.message !== "signed out") $("record").textContent = err.message;

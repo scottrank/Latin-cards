@@ -24,7 +24,7 @@ A practice session is assumed to be about 20 minutes.
 - When nothing is due, students can choose **Extra practice**, which drills their weakest cards (never one they got right in the last 20 minutes).
 
 - Students type a lesson range (e.g. 3 to 7) to choose what they study.
-- A score bar tracks XP (10 per right answer + streak bonus up to +10; 1 for a miss), level (every 250 XP), current and best streak, today's right/missed counts, and cards mastered.
+- A score bar tracks the current and best streak of right answers, today's right/missed counts, and cards mastered.
 
 Keyboard: space to flip, `1` / ← for Missed it, `2` / → for Got it.
 
